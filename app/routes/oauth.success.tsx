@@ -12,6 +12,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return json({});
 };
 
+const _sanitizeLinkCode = (linkCode: string) => {
+  return linkCode.toUpperCase().replace(/[^ABCDEFGHJKLMNPQRSTUVWXYZ]/g, '').slice(0, 4);
+}
+
 export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
   let linkCode = String(formData.get("linkCode"));
@@ -19,7 +23,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   // use environment variable SUCCESS_REDIRECT_URL
   const successRedirectUrl = process.env.SUCCESS_REDIRECT_URL ?? "/";
   
-  linkCode = linkCode.toUpperCase().replace(/[^ABCDEFGHJKMNPRSTUVWXYZ]/g, '')
+  linkCode = _sanitizeLinkCode(linkCode);
   if (linkCode.length != 4) {
     return json(
       { errors: { linkCode: "linkCode is invalid", discordCode: null } },
@@ -34,6 +38,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const DISCORD_OAUTH2_URL = process.env.DISCORD_OAUTH2_URL ?? '';
   const API_URL = process.env.API_URL ?? '';
+  const OAUTH_REDIRECT_URL = process.env.OAUTH_REDIRECT_URL ?? '';
 
 
   const response = await fetch(API_URL, {
@@ -69,7 +74,7 @@ export default function LoginPage() {
     linkCodeRef.current?.addEventListener("input", (e) => {
       const input = e.target as HTMLInputElement;
       // limit it to 4 characters
-      input.value = input.value.toUpperCase().replace(/[^ABCDEFGHJKMNPRSTUVWXYZ]/g, '').slice(0, 4);
+      input.value = _sanitizeLinkCode(input.value);
     } )
     
   }, [actionData]);
