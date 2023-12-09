@@ -5,7 +5,6 @@ import type {
 } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Form, Link, useActionData, useLoaderData, useSearchParams } from "@remix-run/react";
-
 import { useEffect, useRef  } from "react";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -13,7 +12,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
   String(request);
 
-  return json({discordOauth2Url: process.env.DISCORD_OAUTH2_URL ?? ''});
+  return json({DISCORD_OAUTH2_URL});
 };
 
 const _sanitizeLinkCode = (linkCode: string) => {
@@ -26,7 +25,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const NAKAMA_API_BASE_URL = process.env.NAKAMA_API_BASE_URL ?? '';
   const NAKAMA_HTTP_KEY = process.env.NAKAMA_HTTP_KEY ?? '';
   const OAUTH_REDIRECT_URL = process.env.OAUTH_REDIRECT_URL ?? '';
-
+  
   const formData = await request.formData();
   let linkCode = String(formData.get("linkCode"));
   const oauthCode = String(formData.get("discordCode"));
@@ -73,7 +72,7 @@ console.log("Sending: %s", JSON.stringify(JSON.stringify({
   } else if (response.status === 401) {
     console.error(`Redirecting to oauth url, because of error from nakama: ${response.statusText}`)
     //return redirect(DISCORD_OAUTH2_URL);
-    console.error("Error: 404 ", )
+    console.error("Error: 401", )
     return json(
       { success: false, errors: {   linkCode: "Could not find link code or discord code expired. Try clicking 'Link Discord' below.", discordCode: null, } },
       { status: 400 },
@@ -100,19 +99,25 @@ export const meta: MetaFunction = () => [{ title: "Link Device" }];
 export default function LoginPage() {
 
   const [searchParams] = useSearchParams();
-  const discordCode = searchParams.get("code");
+  const exchangeCode = searchParams.get("code");
 
   const actionData = useActionData<typeof action>();
   const loaderData = useLoaderData<typeof loader>();
   const linkCodeRef = useRef<HTMLInputElement>(null);
 
-  if (!discordCode) {
-    return redirect(loaderData.discordOauth2Url);
+  // redirect has to be outside the useEffect, otherwise it will not work
+  function _send_redirect(url : string) {
+    return redirect(url);
   }
+  
+
   useEffect(() => {
 
     if (actionData?.errors?.linkCode) {
       linkCodeRef.current?.focus();
+    }
+    if (!exchangeCode) {
+      _send_redirect(loaderData.DISCORD_OAUTH2_URL);
     }
 
     linkCodeRef.current?.addEventListener("input", (e) => {
@@ -124,6 +129,7 @@ export default function LoginPage() {
 
     
 
+  
   }, [actionData]);
 
  
@@ -136,7 +142,7 @@ export default function LoginPage() {
             htmlFor="linkCode"
             className="block text-sm font-medium text-gray-700">Link Account</label>
             <p id="subheader">To link your account, please enter the 4-character code displayed in your headset.</p>
-            <input type="hidden" name="discordCode" value={discordCode ?? ""} />
+            <input type="hidden" name="discordCode" value={exchangeCode ?? ""} />
             <div className="mt-1">
               <input
                 ref={linkCodeRef}
@@ -165,7 +171,6 @@ export default function LoginPage() {
           </div>
           <div>
           </div>
-
           <button
             type="submit"
             className="w-full rounded bg-blue-500 px-4 py-2 text-white hover:bg-blue-600 focus:bg-blue-400"
