@@ -15,6 +15,15 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return json({DISCORD_OAUTH2_URL});
 };
 
+const _redirectToDiscordOauth = () => {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: process.env.DISCORD_OAUTH2_URL ?? ''
+    },
+  });
+}
+
 const _sanitizeLinkCode = (linkCode: string) => {
   return linkCode.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
 }
@@ -107,7 +116,7 @@ export default function LoginPage() {
 
   // redirect has to be outside the useEffect, otherwise it will not work
   function _send_redirect(url : string) {
-    return redirect(url);
+    return _redirectToDiscordOauth();
   }
   
 
@@ -116,6 +125,7 @@ export default function LoginPage() {
     if (actionData?.errors?.linkCode) {
       linkCodeRef.current?.focus();
     }
+
     if (!exchangeCode) {
       _send_redirect(loaderData.DISCORD_OAUTH2_URL);
     }
@@ -182,7 +192,7 @@ export default function LoginPage() {
 
             <div className="text-center text-sm text-gray-500">
               Don&apos;t have an account?{" "}
-              <a href={loaderData.discordOauth2Url} className="font-medium text-blue-600 hover:text-blue-500">
+              <a href={loaderData.DISCORD_OAUTH2_URL} className="font-medium text-blue-600 hover:text-blue-500">
                 Link Discord
               </a>
               </div>
